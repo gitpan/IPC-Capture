@@ -1,0 +1,6 @@
+Revision history for Perl extension IPC::Capture.
+
+0.01  Wed Apr  9 15:30:31 2008
+	- original version; created by h2xs 1.23 with options
+		-AX -nIPC::Capture -b5.8.0
+
