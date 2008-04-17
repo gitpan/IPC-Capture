@@ -1,5 +1,5 @@
-#!/usr/local/perl_5.9.5/bin/perl5.9.5
-##  #!/usr/bin/perl
+#!/usr/bin/perl
+## #!/usr/local/perl_5.9.5/bin/perl5.9.5
 # yammer_to_stderr_and_stdout                    doom@kzsu.stanford.edu
 #                                                    06 Apr 2008
 

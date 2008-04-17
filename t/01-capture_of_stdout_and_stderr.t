@@ -18,6 +18,7 @@ plan tests=> 14;
 
 my $DEBUG = 0;
 my $CHOMPALOT = 1;
+my $PERL = $^X;
 
 my $CLASS = 'IPC::Capture';
 use_ok( $CLASS );
@@ -31,7 +32,7 @@ use_ok( $CLASS );
 
 {#4-#8
   my $test_name = "Testing method run with way qx";
-  my $test_cmd = "$Bin/bin/yammer_to_stderr_and_stdout";
+  my $test_cmd = "$PERL $Bin/bin/yammer_to_stderr_and_stdout";
 
   my $ic = $CLASS->new({way=>'qx'});
 
@@ -70,7 +71,7 @@ use_ok( $CLASS );
 
 {#9-#14
   my $test_name = "Testing method run using way ipc_cmd";
-  my $test_cmd = "$Bin/bin/yammer_to_stderr_and_stdout";
+  my $test_cmd = "$PERL $Bin/bin/yammer_to_stderr_and_stdout";
 
   my $ic = $CLASS->new({way=>'ipc_cmd'});
 

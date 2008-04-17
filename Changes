@@ -4,3 +4,8 @@ Revision history for Perl extension IPC::Capture.
 	- original version; created by h2xs 1.23 with options
 		-AX -nIPC::Capture -b5.8.0
 
+0.02  Thursday April 17, 2008   2:15 PM
+        - fixed a possible bug in tests: now explicitly uses the
+          running perl ($^X) to run a sub-script, rather than
+          relying on the hashbang line.
+

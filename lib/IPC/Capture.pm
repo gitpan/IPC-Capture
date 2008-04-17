@@ -58,7 +58,7 @@ use File::Temp qw( tempfile tempdir );
 # Note: IPC::Cmd is used below dynamically (if qx fails)
 use List::MoreUtils qw( zip );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 my $DEBUG = 1;  # TODO change to 0 before shipping
 
 # needed for accessor generation
