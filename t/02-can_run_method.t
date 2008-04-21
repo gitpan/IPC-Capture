@@ -49,32 +49,36 @@ use_ok( $CLASS );
 {#3, #4, #5, #6
   my @methods = ('can_run_qx_which', 'can_run_qx_path_glob');
   foreach my $method (@methods) {
-    my $test_name = "Testing $method directly";
+    my $test_name = "Testing $method directly:";
     my $ic = $CLASS->new();
     my ($target, $found);
     $target = $target{ likely };
     $found = $ic->$method( $target );
-    like($found, qr{ \b $target $ }xms , "$test_name found target");
+    like($found, qr{ \b $target $ }xms , "$test_name found target") ||
+      print STDERR "return value: $found\n";
 
     $target = $target{ unlikely };
     $found = $ic->$method( $target );
-    ok( not( $found ), "$test_name did not find odd target");
+    ok( not( $found ), "$test_name: no success finding a crazy target") ||
+      print STDERR "return value: $found\n";
   }
 }
 
 { #7, #8, #9, #10
   my @ways = ('qx', 'ipc_cmd');
   foreach my $way (@ways) {
-    my $test_name = "Testing can_run with way $way";
+    my $test_name = "Testing can_run working $way way:";
     my $ic = $CLASS->new( {way => $way} );
     my ($target, $found);
     $target = $target{ likely };
     $found = $ic->can_run( $target );
-    like($found, qr{ \b $target $ }xms , "$test_name found target");
+    like($found, qr{ \b $target $ }xms , "$test_name found target") ||
+      print STDERR "return value: $found\n";
 
     $target = $target{ unlikely };
     $found = $ic->can_run( $target );
-    ok( not( $found ), "$test_name did not find odd target");
+    ok( not( $found ), "$test_name: no success finding a crazy target") ||
+      print STDERR "return value: $found\n";
   }
 }
 
@@ -87,7 +91,7 @@ use_ok( $CLASS );
 # Avoids using empty directories, and has a bailout feature to
 # prevent infinite loops from hanging things.
 sub find_some_program_in_path {
-  my @path = File::Spec->path();
+  my @path = grep { -d $_ } File::Spec->path();
 
   # preparing to bail out of infinite loops
   my $count = 0;
@@ -113,7 +117,7 @@ sub find_some_program_in_path {
     return if $count > $limit;
     my $pick = int( rand( scalar( @files )));
     $file = $files[ $pick ];
-  } until( -x $file && -f $file );  #TODO exclude backup files: ~
+  } until( -x $file && -f $file );
   my $program = $file;
 
   return $program;
@@ -128,7 +132,7 @@ sub find_perl_in_path {
 
   my @targets = ('perl', $perlname);
 
-  my @path = File::Spec->path();
+  my @path = grep { -d $_ } File::Spec->path();
 
   foreach my $loc (@path) {
 

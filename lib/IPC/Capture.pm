@@ -9,7 +9,11 @@ IPC::Capture - portably run external apps and capture the output
 
    use IPC::Capture;
    my $acc = IPC::Capture->new();
-   $acc->set_output_director('stdout_only');
+   $acc->set_filter('stdout_only');
+
+   unless( $acc->can_run( $this_cmd ) {
+      die "Will not be able to run the external command: $this_cmd\n";
+   }
 
    my $output;
    if ( $output = $acc->run( $this_cmd ) || $acc->success ) {
@@ -28,18 +32,19 @@ IPC::Capture is a module for running external applications
 in a portable fashion when you're primarily interested in capturing
 the returned output.
 
-Essentially this is an attempt at creating a portable way of doing a
-"qx" with io-redirection.  In fact, typically it will internally try
-to run the command via a sub-shell invoked by qx, if it looks like
-that will work: if not it tries some other approaches which may work
-if modules such as L<IPC::Cmd> and L<IPC::Run> are installed.
+Essentially this is an attempt at creating a portable way of doing
+"backticks" with io-redirection.  In fact, if it looks like it will work,
+this module will internally just try to run the command via a sub-shell
+invoked by qx; otherwise, it will try some other approaches which may work
+(working through other modules such as L<IPC::Cmd>, L<IPC::Run>, and/or
+L<IPC::Open3>).
 
-These different approaches to running external commands are called
-"ways" here (because terms like "methods" already have different
-associations).  At present, there are only two "ways" defined in
-this module: "qx" and "ipc_cmd".  We will probe the system trying
-each of the known ways (in the order defined in the "ways" attribute),
-and use the first one that looks like it will work.
+The different ways of running external commands are called "ways" here
+(because words like "methods" already have too many other associations).
+At present, there are only two "ways" defined in this module: "qx" and
+"ipc_cmd".  We probe the system trying each of the known ways (in the
+order defined in the "ways" attribute), and use the first one that looks
+like it will work.
 
 =head2 METHODS
 
@@ -58,8 +63,8 @@ use File::Temp qw( tempfile tempdir );
 # Note: IPC::Cmd is used below dynamically (if qx fails)
 use List::MoreUtils qw( zip );
 
-our $VERSION = '0.02';
-my $DEBUG = 1;  # TODO change to 0 before shipping
+our $VERSION = '0.03';
+my $DEBUG = 0;  # TODO change to 0 before shipping
 
 # needed for accessor generation
 our $AUTOLOAD;
@@ -75,9 +80,9 @@ later via the accessor methods). These attributes are:
 
 =over
 
-=item output_director
+=item filter
 
-The "output_director" is a code that specifies what command output
+The "filter" is a code that specifies what command output
 streams we're interested in capturing.  Allowed values:
 
 =over
@@ -123,15 +128,17 @@ would like to try them.  Defaults to L</known_ways>.
 
 =item way
 
-Internal data structure used to store the result of the system probe
-for functional ways.  This is a hashref, keyed by the allowed
-values of the L</output_director>, to allow for odd cases where
-different ways may work with different output_directors.
+The chosen "way" that will be used for invoking external commands.
 
 =item stdout_probe_messages
 
-An array reference of a listing of messages which will be sent
-to stdout by the probe sub-script
+List of messages which are sent to STDOUT by the probe sub-script.
+An array reference.
+
+=item stderr_probe_messages
+
+List of messages which are sent to STDERR by the probe sub-script.
+An array reference.
 
 =back
 
@@ -160,7 +167,7 @@ sub init {
   unlock_keys( %{ $self } );
 
   my @attributes = qw(
-                       output_director
+                       filter
 
                        autochomp
 
@@ -168,9 +175,10 @@ sub init {
                        ways
                        way
 
-                       known_output_directors
+                       known_filters
 
                        stdout_probe_messages
+                       stderr_probe_messages
                       );
 
   foreach my $field (@attributes) {
@@ -181,7 +189,7 @@ sub init {
   $self->{ known_ways } = ['qx', 'ipc_cmd'];
   $self->{ ways } ||= $self->{ known_ways };
 
-  $self->{ known_output_directors } =
+  $self->{ known_filters } =
     [
      'stdout_only',
      'stderr_only',
@@ -192,6 +200,9 @@ sub init {
   $self->{ stdout_probe_messages } ||=
     [ 'abc', 'ijk', 'xyz' ];
 
+  $self->{ stderr_probe_messages } ||=
+    [ '123', '567', '890' ];
+
   my $way = $self->probe_system;
   $self->{ way } = $way;
 
@@ -201,7 +212,7 @@ sub init {
   lock_keys( %{ $self } );
   return $self;
 }
-# Note: logically, known_ways and known_output_directors
+# Note: logically, known_ways and known_filters
 # could be class data: but I don't think I care.
 
 =item probe_system
@@ -213,14 +224,13 @@ looks
 
 sub probe_system {
   my $self = shift;
-
   my $ways = $self->ways;
 
-  # we use File::Temp to write out a small perl script that sends
-  # some known output to stdout and (optionally) to stderr
+  ## Here we use File::Temp to write out a small perl script that sends
+  ## some known output to stdout and (optionally) to stderr
   my $code = $self->define_yammer_script();
 
-  # create a temporary perl script file
+  # creating a temporary perl script file
   # Note: we explicitly use tmpdir, or else it uses curdir which may not be writable(!)
   my $tmpdir = File::Spec->tmpdir();
   $File::Temp::KEEP_ALL = 1 if $DEBUG;  # overrides "UNLINK" & leaves tempfile
@@ -230,10 +240,10 @@ sub probe_system {
                                      UNLINK => 1     );
 
   $self->debug( "scriptname: $scriptname\n" );
-
   print {$fh1} $code;
   close( $fh1 );
 
+  # trying running the script a few different ways
   my $chosen_way;
   foreach my $way (@{ $ways } ) {
     my $method = "probe_system_$way";
@@ -301,7 +311,7 @@ via qx.
 sub probe_system_qx {
   my $self       = shift;
   my $scriptname = shift;
-  my $stderr_probe_messages = shift || [ '123', '567', '890' ];
+  my $stderr_probe_messages = shift || $self->stderr_probe_messages;
 
   my $perl = $^X; # have perl tell us where it is (might not be in path)
   my $stderr_args = join ' ', @{ $stderr_probe_messages };
@@ -497,11 +507,11 @@ sub can_run_ipc_cmd {
 Takes one argument: an external command string.
 
 Returns the output from the external command (as controlled by
-the L</output_director> setting in the object).  The output
+the L</filter> setting in the object).  The output
 will be in the form of a multiline string, *except* in one
 case:
 
-If output_director is set to "all_separated", then it this
+If filter is set to "all_separated", then it this
 will return a reference to an array of two elements, the first
 containing stdout, the second stderr.
 
@@ -512,7 +522,7 @@ sub run {
   my $cmd  = shift;
   my $output;
   my $way = $self->way;
-  my $od  = $self->output_director;
+  my $od  = $self->filter;
   my $method = 'run_' . $way. '_' . $od ;  # run_<way>_<od>
   $output = $self->$method( $cmd );
   return $output;
@@ -529,7 +539,7 @@ These methods are for internal use by the "run" method.
 These are methods that take the given command and simply try to
 run them via whatever shell is available to the qx{} operator.
 
-The L</output_director> setting is converted to equivalent
+The L</filter> setting is converted to equivalent
 Bourne shell redirect.
 
 =over
@@ -578,12 +588,15 @@ sub run_qx_stderr_only {
   return $output;
 }
 
-=item run_qx_all_separated
+=item run_qx_all_separated_old
+
+(An earlier attempt that seemed "more correct"
+to me, but doesn't work on MSwin32.)
 
 =cut
 
 # uses redirection to a temp file to get stderr isolated from stdout
-sub run_qx_all_separated {
+sub run_qx_all_separated_old {
   my $self = shift;
   my $cmd  = shift;
   my ($output, $stdout, $stderr);
@@ -609,6 +622,49 @@ sub run_qx_all_separated {
   return $output;
 }
 
+
+=item run_qx_all_separated
+
+
+=cut
+
+# And alternate form of L</run_qx_all_separated> to work
+# around an mswin32 issue.
+
+sub run_qx_all_separated {
+  my $self = shift;
+  my $cmd  = shift;
+  my ($output, $stdout, $stderr);
+  my $tmpdir = File::Spec->tmpdir();
+
+  # $File::Temp::KEEP_ALL = 1 if $DEBUG;
+
+  my ($fh, $filename) = tempfile('buf_XXXX',
+                                 SUFFIX => '.dat',
+                                 DIR => $tmpdir,
+                                 UNLINK => 0);
+
+  close($fh);
+
+  my $sod = "2>$filename";
+  $stdout = qx{$cmd $sod};
+
+  open $fh, '<', $filename or croak "Could not re-open $filename for read: $!";
+
+  while( my $line = <$fh> ) {
+    $stderr .= $line;
+  }
+  close($fh);
+
+  unlink( $filename ) unless $DEBUG;
+
+  $output = [ $stdout, $stderr ];
+  $self->chomp_aref( $output ) if $self->autochomp;
+  return $output;
+}
+
+
+
 =back
 
 =head2 "run_ipc_cmd_*" methods
@@ -617,7 +673,7 @@ These are methods that take the given command and try to
 run them via the L<IPC::Cmd> module, (which in turn will try
 to use L<IPC::Run> or L<Run::Open3>).
 
-The L</output_director> setting determines what kind of
+The L</filter> setting determines what kind of
 IPC::Cmd call to use, and which of it's output channels will
 be returned.
 
@@ -625,7 +681,7 @@ be returned.
 
 =item run_ipc_cmd_stdout_only
 
-Used internally by L</run> when the L</output_director> is set
+Used internally by L</run> when the L</filter> is set
 to 'stdout_only' (and the L</way> is 'ipc_cmd').
 
 =cut
@@ -650,7 +706,7 @@ sub run_ipc_cmd_stdout_only {
 
 =item run_ipc_cmd_stderr_only
 
-Used internally by L</run> when the L</output_director> is set
+Used internally by L</run> when the L</filter> is set
 to 'stderr_only' (and the L</way> is 'ipc_cmd'):
 
 =cut
@@ -675,7 +731,7 @@ sub run_ipc_cmd_stderr_only {
 
 =item run_ipc_cmd_all_output
 
-Used internally by L</run> when the L</output_director> is set
+Used internally by L</run> when the L</filter> is set
 to 'all_output' (and the L</way> is 'ipc_cmd'):
 
 =cut
@@ -697,7 +753,7 @@ sub run_ipc_cmd_all_output {
 
 =item run_ipc_cmd_all_separated
 
-Used internally by L</run> when the L</output_director> is set
+Used internally by L</run> when the L</filter> is set
 to 'all_separated' (and the L</way> is 'ipc_cmd'):
 
 =cut
@@ -838,7 +894,7 @@ a fair degree of cross-platform portability.
 
 =head2 further notes
 
-Depending on the type of output requested with the "output_director",
+Depending on the type of output requested with the "filter",
 this module will choose to do either a scalar or an array context call
 to IPC::Cmd::run (insulating the user from one of IPC::Cmd's
 oddities).
@@ -887,7 +943,7 @@ stop worrying about mistyping '2>&1'.
 
 =head1 TODO
 
-o  More output_directors -- "output_to_file", etc.
+o  More filters -- "output_to_file", etc.
    Add a general purpose, user-defineable one?
 
 o  IPC::Cmd seems to have reliability problems (possibly, with

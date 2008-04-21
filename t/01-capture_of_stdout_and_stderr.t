@@ -36,15 +36,15 @@ use_ok( $CLASS );
 
   my $ic = $CLASS->new({way=>'qx'});
 
-  my @output_directors =
+  my @filters =
     ( 'stdout_only',
       'stderr_only',
       'all_output',
       'all_separated',
     );
 
-  foreach my $od ( @output_directors ) {
-    $ic->set_output_director( $od );
+  foreach my $od ( @filters ) {
+    $ic->set_filter( $od );
     my $output = $ic->run( $test_cmd );
     my $expected = expectorant( $od );
 
@@ -55,16 +55,16 @@ use_ok( $CLASS );
 
     if( not( ref( $output ) ) ) {
       eq_or_diff( $output, $expected,
-                  "$test_name with output_director $od");
+                  "$test_name with filter $od");
     } elsif( ref( $output ) eq 'ARRAY' ) {
       is_deeply(\$output, \$expected,
-                "$test_name with output_director $od (whole)");
+                "$test_name with filter $od (whole)");
 
       eq_or_diff( $output->[0], $expected->[0],
-                "$test_name with output_director $od (stdout)");
+                "$test_name with filter $od (stdout)");
 
       eq_or_diff( $output->[1], $expected->[1],
-                "$test_name with output_director $od (stderr)");
+                "$test_name with filter $od (stderr)");
     }
   }
 }
@@ -75,15 +75,15 @@ use_ok( $CLASS );
 
   my $ic = $CLASS->new({way=>'ipc_cmd'});
 
-  my @output_directors =
+  my @filters =
     ( 'stdout_only',
       'stderr_only',
       'all_output',
       'all_separated',
     );
 
-  foreach my $od ( @output_directors ) {
-    $ic->set_output_director( $od );
+  foreach my $od ( @filters ) {
+    $ic->set_filter( $od );
     my $output = $ic->run( $test_cmd );
     my $expected = expectorant( $od );
 
@@ -94,22 +94,22 @@ use_ok( $CLASS );
 
     if( not( ref( $output ) ) ) {
       eq_or_diff( $output, $expected,
-                  "$test_name with output_director $od");
+                  "$test_name with filter $od");
     } elsif( ref( $output ) eq 'ARRAY' ) {
       is_deeply(\$output, \$expected,
-                "$test_name with output_director $od (whole)");
+                "$test_name with filter $od (whole)");
 
       eq_or_diff( $output->[0], $expected->[0],
-                "$test_name with output_director $od (stdout)");
+                "$test_name with filter $od (stdout)");
 
       eq_or_diff( $output->[1], $expected->[1],
-                "$test_name with output_director $od (stderr)");
+                "$test_name with filter $od (stderr)");
     }
   }
 }
 
 
-# set up expected output for different output_director settings
+# set up expected output for different filter settings
 sub expectorant {
   my $od = shift;
 
