@@ -63,7 +63,7 @@ use File::Temp qw( tempfile tempdir );
 # Note: IPC::Cmd is used below dynamically (if qx fails)
 use List::MoreUtils qw( zip );
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 my $DEBUG = 0;  # TODO change to 0 before shipping
 
 # needed for accessor generation
@@ -446,7 +446,7 @@ sub can_run_qx_which {
   if (@?) {
     $self->debug("$subname: Running 'which' errored out: @?\n");
   }
-  if ( defined( $found ) && ($found =~ m{ $program }xms) ) {
+  if ( defined( $found ) && ($found =~ m{ \b $program $ }xms) ) {
     return $found;
   } else {
     return;

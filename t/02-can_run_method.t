@@ -1,8 +1,6 @@
-# Test file created outside of h2xs framework.
+# Test file
 # Run this like so: `perl 02-can_run-IPC-Capture.t'
 #   doom@kzsu.stanford.edu     2008/04/15 01:02:48
-
-#########################
 
 use warnings;
 use strict;
