@@ -24,14 +24,14 @@ my $CLASS = 'IPC::Capture';
 use_ok( $CLASS );
 
 {#3
-  my $test_name = "Testing basic creation of object of $CLASS";
+  my $test_name = "Testing basic creation of object of type $CLASS";
   my $obj  = $CLASS->new();
   my $type = ref( $obj );
   is( $type, $CLASS, $test_name );
 }
 
 {#4-#8
-  my $test_name = "Testing method run with way qx";
+  my $test_name = q{ Testing method "run" with way "qx" };
   my $test_cmd = "$PERL $Bin/bin/yammer_to_stderr_and_stdout";
 
   my $ic = $CLASS->new({way=>'qx'});

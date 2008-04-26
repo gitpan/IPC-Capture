@@ -17,3 +17,9 @@ Revision history for Perl extension IPC::Capture.
           MSwin32 issue.
         - changed name of object attribute 'output_director' to 'filter'
           Note: this is a change in the UI.
+
+0.04  Tuesday April 22, 2008  01:15 AM
+        - now deals with chatty "which" commands on some systems (e.g. Sun)
+
+0.05 Saturday April 26, 2008   2:22 AM
+        - dropped mention of unimplemented feature "success" from SYNOPSIS

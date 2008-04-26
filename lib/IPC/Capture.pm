@@ -8,23 +8,18 @@ IPC::Capture - portably run external apps and capture the output
 =head1 SYNOPSIS
 
    use IPC::Capture;
-   my $acc = IPC::Capture->new();
-   $acc->set_filter('stdout_only');
+   my $ich = IPC::Capture->new();
+   $ich->set_filter('stdout_only');
 
-   unless( $acc->can_run( $this_cmd ) {
+   unless( $ich->can_run( $this_cmd ) {
       die "Will not be able to run the external command: $this_cmd\n";
    }
 
    my $output;
-   if ( $output = $acc->run( $this_cmd ) || $acc->success ) {
-      # ... work with $output, even if it's a "false" value, like undef
+   if ( $output = $ich->run( $this_cmd ) ) {
+      # work with $output...
    }
 
-   my $output;
-   if ( $output = $acc->run( $this_cmd )  ) {
-     die "Couldn't run $this_cmd" if ( not( $acc->success ) );
-     # ... work with $output, if we haven't thrown an error.
-   }
 
 =head1 DESCRIPTION
 
@@ -63,7 +58,7 @@ use File::Temp qw( tempfile tempdir );
 # Note: IPC::Cmd is used below dynamically (if qx fails)
 use List::MoreUtils qw( zip );
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 my $DEBUG = 0;  # TODO change to 0 before shipping
 
 # needed for accessor generation
@@ -179,12 +174,16 @@ sub init {
 
                        stdout_probe_messages
                        stderr_probe_messages
+
+                       success
                       );
 
   foreach my $field (@attributes) {
     $ATTRIBUTES{ $field } = 1;
     $self->{ $field } = $args->{ $field };
   }
+
+  $self->{ success } = 1; ### TODO stub.
 
   $self->{ known_ways } = ['qx', 'ipc_cmd'];
   $self->{ ways } ||= $self->{ known_ways };
@@ -204,7 +203,10 @@ sub init {
     [ '123', '567', '890' ];
 
   my $way = $self->probe_system;
-  $self->{ way } = $way;
+  unless( $way ) {
+    $self->debug("IPC::Capture probe_system method has not found a way.");
+  }
+  $self->{ way } = $way || 'qx';  # TODO should there be a fallback default here?
 
   $self->debugging( 1 ) if $DEBUG;
   $DEBUG = 1 if $self->debugging();
@@ -508,12 +510,12 @@ Takes one argument: an external command string.
 
 Returns the output from the external command (as controlled by
 the L</filter> setting in the object).  The output
-will be in the form of a multiline string, *except* in one
-case:
+will almost always be in the form of a multi-line string,
+except in one case:
 
-If filter is set to "all_separated", then it this
-will return a reference to an array of two elements, the first
-containing stdout, the second stderr.
+If filter is set to "all_separated", then this will return a
+reference to an array of two elements, the first containing
+stdout, the second stderr.
 
 =cut
 
@@ -952,10 +954,14 @@ o  IPC::Cmd seems to have reliability problems (possibly, with
    the output most commonly recieved.
 
 o  Better test coverage:  autochomp;  probe_system*;
-
+x
 o  02-can_run.t tests multiple internal routines, only one flavor of
-   which need work for the overall behavior to work.  Should ship
-   only with tests that verify the interface methods.
+   which need work for the overall behavior to work.  Possibly should
+   ship only with tests that verify the interface methods...
+
+o  IPC::Capture lacks "success", as of 0.05.  This means the SYNOPSIS
+   is complete nonsense for versions 0.04 and earlier. For now,
+   not mentioning "success", but think about implementing it.
 
 =head1 SEE ALSO
 
