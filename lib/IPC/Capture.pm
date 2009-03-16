@@ -11,14 +11,22 @@ IPC::Capture - portably run external apps and capture the output
    my $ich = IPC::Capture->new();
    $ich->set_filter('stdout_only');
 
-   unless( $ich->can_run( $this_cmd ) {
-      die "Will not be able to run the external command: $this_cmd\n";
-   }
-
-   my $output;
-   if ( $output = $ich->run( $this_cmd ) ) {
+   my $output = $ich->run( $this_cmd );
+   if ( $output ) ) {
       # work with $output...
    }
+
+   unless( $ich->can_run( $another_cmd ) {
+      die "Will not be able to run the external command: $another_cmd\n";
+   }
+
+   $ich->set_filter('stderr_only');
+   my $errors = $ich->run( $another_cmd );
+
+   # stdout and stderr together:
+   $ich->set_filter('all_output');
+   my $all = $ich->run( $another_cmd );
+
 
 
 =head1 DESCRIPTION
@@ -31,7 +39,7 @@ Essentially this is an attempt at creating a portable way of doing
 "backticks" with io-redirection.  In fact, if it looks like it will work,
 this module will internally just try to run the command via a sub-shell
 invoked by qx; otherwise, it will try some other approaches which may work
-(working through other modules such as L<IPC::Cmd>, L<IPC::Run>, and/or
+(going through other modules such as L<IPC::Cmd>, L<IPC::Run>, and/or
 L<IPC::Open3>).
 
 The different ways of running external commands are called "ways" here
@@ -58,7 +66,7 @@ use File::Temp qw( tempfile tempdir );
 # Note: IPC::Cmd is used below dynamically (if qx fails)
 use List::MoreUtils qw( zip );
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 my $DEBUG = 0;  # TODO change to 0 before shipping
 
 # needed for accessor generation
@@ -219,8 +227,8 @@ sub init {
 
 =item probe_system
 
-Internally used during the init phase of object creation,
-looks
+Internally used during the init phase of object creation.
+Chooses a good "way" of running commands external to perl.
 
 =cut
 
@@ -440,15 +448,17 @@ sub can_run_qx_which {
   my $program = shift;
   my $subname = ( caller(0) )[3];
 
+  my $which = 'which';
   my $found;
   eval {
-    $found = qx{ which $program };
+    no warnings;
+    $found = qx{ $which $program };
     chomp( $found );
   };
-  if (@?) {
-    $self->debug("$subname: Running 'which' errored out: @?\n");
-  }
-  if ( defined( $found ) && ($found =~ m{ \b $program $ }xms) ) {
+  if ($@) {
+    $self->debug("$subname: Running '$which' errored out: $@\n");
+    return;
+  } elsif ( defined( $found ) && ($found =~ m{ \b $program $ }xms) ) {
     return $found;
   } else {
     return;
@@ -954,7 +964,7 @@ o  IPC::Cmd seems to have reliability problems (possibly, with
    the output most commonly recieved.
 
 o  Better test coverage:  autochomp;  probe_system*;
-x
+
 o  02-can_run.t tests multiple internal routines, only one flavor of
    which need work for the overall behavior to work.  Possibly should
    ship only with tests that verify the interface methods...

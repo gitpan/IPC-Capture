@@ -8,6 +8,7 @@ WriteMakefile(
     PREREQ_PM         => {  IPC::Cmd          => 0,
                             Class::Base       => 0,
                             Test::Differences => 0,
+                            Text::Diff        => 0.34,
                             Carp              => 0,
                             Data::Dumper      => 0,
                             Env               => 0,
